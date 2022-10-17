@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/@shopify/polaris@4.25.0/styles.min.css"
+    />
+  <script src="https://unpkg.com/@shopify/app-bridge@2"></script>
+
+</head>
+
+<body>
+
+<h5 style="font-size: medium"> Currently in <b><%= @shop_origin %></b> Shop </h5>
+<br>
+
+
+<!--var link = `<a target="_top" href="https://<%#= @shop_origin %>/admin/products/${product.id}">`-->
+<% if @count > 1 %>
+
+  <%= @ss %>
+  <div class="row" style="font-size: medium">
+    <div class="col-md-4">
+      <label class="form-label">Select Shop To Transfer Product</label>
+    </div>
+    <div class="col-md-7">
+      <select id="shops" class="form-select" style="font-size: small">
+        <% for shop in @shops %>
+          <% if shop.shopify_domain != @shop_origin %>
+            <option value="<%= shop.shopify_domain %>"><%= shop.shopify_domain %></option>
+          <% end %>
+        <% end %>
+      </select>
+    </div>
+  </div>
+  <br><br>
+
+  <h5 style="font-size: medium">Products of <%= @shop_origin %></h5>
+  <div id="products" style="font-size: medium"><br>Loading...</div>
+
+<% else %>
+  <p>Install One more Store to this App</p>
+<% end %>
+
+<br><br>
+<hr>
+<script>
+
+    var data_products = [];
+
+    let access_token = [];
+    let shops = [];
+
+    <% for shop in @shops %>
+    shops.push('<%= shop.shopify_domain %>');
+    access_token.push('<%= shop.shopify_token %>');
+    <% end %>
+    console.log(shops);
+    console.log(access_token);
+
+    async function displayProducts() {
+
+        var fetchProducts = function () {
+            var headers = new Headers({"Authorization": "Bearer " + window.sessionToken});
+
+            return fetch("/products", {headers})
+                .then(response => response.json())
+                .then(data => {
+                    let products = data.products;
+                    data_products = products;
+                    if (products === undefined || products.length == 0) {
+                        document.getElementById("products").innerHTML = "<br>No products to display.";
+                    } else {
+
+                        var list = "";
+
+                        products.forEach((product) => {
+                            list += `<li style='margin: 15px;' id='${product.created_at}'>` + product.title + ` <button class='btn btn-outline-primary' style='font-size: medium'>Transfer Product</button>  </li>`;
+                        });
+
+
+                        console.log(data.ss1);
+
+                        document.getElementById("products").innerHTML = "<ul style='font-size: medium' id='products'>" + list + "</ul>";
+                    }
+                });
+        }();
+    }
+
+    document.addEventListener("DOMContentLoaded", displayProducts);
+
+
+    $(document).ready(function () {
+
+        let data = '';
+        let called = false;
+        $('.btn').click(function () {
+            called = true;
+        });
+
+        async function postData(url = '', data = {}) {
+            // Default options are marked with *
+            const response = await fetch(url, {
+                method: 'POST', // *GET, POST, PUT, DELETE, etc.
+                mode: 'cors', // no-cors, *cors, same-origin
+                cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+                credentials: 'same-origin', // include, *same-origin, omit
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'POST',
+                    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+                    // 'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                redirect: 'follow', // manual, *follow, error
+                referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+                body: JSON.stringify(data) // body data type must match "Content-Type" header
+            });
+            return response.json(); // parses JSON response into native JavaScript objects
+        }
+
+        $("#products").on('click', '.btn', function () {
+
+            var id = $(this).closest('li').attr('id');
+            var selected = $('#shops').val();
+            for (let x in data_products) {
+                if (data_products[x].created_at === id) {
+                    let dd = data_products[x];
+                    console.log(dd);
+                    let variants = [];
+                    let xx = ''
+                    for (let x in dd.variants) {
+                        xx = `{"option1":"${dd.variants[x].options1}","price":"${dd.variants[x].price}","weight":${dd.variants[x].weight}}`;
+                        variants.push(JSON.parse(xx));
+                    }
+                    let op = [];
+                    xx = ''
+                    for (let x in dd.options) {
+                        xx = `{"name":"${dd.options[x].name}"}`;
+                        op.push(JSON.parse(xx));
+                    }
+
+                    let index
+                    for (let x in shops) {
+                        if (selected === shops[x]) {
+                            index = x;
+                        }
+                    }
+                    let token = '';
+                    token = access_token[index];
+
+                    $.ajax({
+                        type: 'POST',
+                        url: '/create_product',
+                        success:function () {
+                            alert("Product Created in Store 2");
+                        }
+                    });
+
+
+                }
+            }
+
+
+        });
+
+
+        $('#call').click(function () {
+
+        });
+    });
+
+
+</script>
+</body>
+</html>
